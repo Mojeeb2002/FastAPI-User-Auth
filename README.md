@@ -10,11 +10,24 @@ A secure REST API built with FastAPI that provides JWT-based authentication and 
 - Password hashing with bcrypt
 - Protected endpoints
 - Interactive API documentation (Swagger UI and ReDoc)
+- Session management with SQLAlchemy
+- Custom user models and schemas
 
 ## Prerequisites
 
 - Python 3.7+
 - pip (Python package manager)
+
+## Dependencies
+
+```bash
+fastapi==0.68.1
+uvicorn==0.15.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.5
+sqlalchemy==1.4.23
+```
 
 ## Installation
 
