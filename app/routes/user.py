@@ -2,31 +2,39 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
-
 from ..database import get_db
 from ..schemas import User, UserCreate, Token
 from ..models import UserDB
-from ..auth import authenticate_user, get_current_user, get_user  # Added get_user import
-from ..utils import get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token
+from ..auth import authenticate_user, get_current_user, get_user, create_access_token  # Added get_user import
+from ..utils import get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+from typing import List  # Add this import at the top
 
 router = APIRouter()
 
 @router.post("/register", response_model=User)
 async def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = get_user(db, user.username)
-    if db_user:
+    # Check for existing username
+    if get_user(db, user.username):
         raise HTTPException(
             status_code=400,
             detail="Username already registered"
         )
-    hashed_password = get_password_hash(user.password)
-    db_user = UserDB(
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        disabled=False,
-        hashed_password=hashed_password
-    )
+    
+    # Check for existing email
+    existing_email = db.query(UserDB).filter(UserDB.email == user.email).first()
+    if existing_email:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+    
+    # Create new user using model_dump()
+    user_data = user.model_dump()
+    user_data["hashed_password"] = get_password_hash(user.password)
+    user_data["disabled"] = False
+    del user_data["password"]
+    
+    db_user = UserDB(**user_data)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -53,3 +61,9 @@ async def login_for_access_token(
 @router.get("/users/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+# Testing auto reload if it's working 
+@router.get("/users", response_model=List[User])
+async def get_users(db: Session = Depends(get_db)):
+    users = db.query(UserDB).all()
+    return users
